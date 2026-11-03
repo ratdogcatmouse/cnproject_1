@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# Runtime output (keep the folders via .gitkeep)
+sdn-firewall-project/logs/*
+sdn-firewall-project/results/*
+!sdn-firewall-project/logs/.gitkeep
+!sdn-firewall-project/results/.gitkeep
+*.log
+*.pcap
+
+# Mininet / OVS leftovers
+*.pid
+
+# Secrets / env
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
