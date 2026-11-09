@@ -16,19 +16,27 @@ from common import LOGGER_PORT, now
 
 LOGFILE = os.path.join(ROOT, "logs", "security_events.log")
 lock = threading.Lock()
+MAX_PER_IP = 8          # concurrent connections per source address
+MAX_TOTAL = 64
+FIRST_LINE_TIMEOUT = 10  # a connection must send something quickly (no idle hoarding)
+active = {}
 
 
 def handle(conn, addr):
     try:
+        conn.settimeout(FIRST_LINE_TIMEOUT)
         rf = conn.makefile("r", encoding="utf-8", newline="\n")
         for line in rf:
             line = line.strip()
             if not line:
                 continue
+            conn.settimeout(None)       # established senders may idle between events
             try:
                 rec = json.loads(line)
             except ValueError:
-                rec = {"event": "RAW", "msg": line}
+                rec = None
+            if not isinstance(rec, dict):
+                rec = {"event": "RAW", "msg": line[:2000]}
             rec["logger_ts"] = now()
             rec["from"] = addr[0]
             out = json.dumps(rec)
@@ -40,6 +48,8 @@ def handle(conn, addr):
         pass
     finally:
         conn.close()
+        with lock:
+            active[addr[0]] = active.get(addr[0], 1) - 1
 
 
 def main():
@@ -52,6 +62,11 @@ def main():
     print("logger listening on 0.0.0.0:%d -> %s" % (LOGGER_PORT, LOGFILE), flush=True)
     while True:
         conn, addr = srv.accept()
+        with lock:
+            if active.get(addr[0], 0) >= MAX_PER_IP or sum(active.values()) >= MAX_TOTAL:
+                conn.close()
+                continue
+            active[addr[0]] = active.get(addr[0], 0) + 1
         threading.Thread(target=handle, args=(conn, addr), daemon=True).start()
 
 

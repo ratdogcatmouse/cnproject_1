@@ -1,0 +1,20 @@
+{
+  "mode": "dynamic",
+  "server_ip": "10.0.0.2",
+  "management_ip": "10.0.0.100",
+  "never_block": ["10.0.0.2", "10.0.0.100"],
+  "default": "deny",
+  "rules": [
+    {"name": "untrusted-host", "src": "10.0.0.5", "action": "deny"},
+    {"name": "app-service", "dst": "10.0.0.2", "dport": 5000, "action": "allow"},
+    {"name": "admin-service-h1-only", "src": "10.0.0.1", "dst": "10.0.0.2", "dport": 8080, "action": "allow"}
+  ],
+  "detection": {
+    "scan_ports": 5,
+    "scan_window": 5,
+    "flood_conns": 40,
+    "flood_window": 2,
+    "block_seconds": 10,
+    "block_max": 120
+  }
+}

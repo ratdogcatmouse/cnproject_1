@@ -1,0 +1,13 @@
+# Python 3.10 venv only (Ryu does not work on Python 3.12+); see setup.sh.
+# Build deps (setuptools<66, wheel, pbr) are installed by setup.sh before this file.
+
+# Used directly by controller/firewall_controller.py
+ryu==4.34
+
+# Ryu runtime dependencies, pinned for compatibility with Ryu 4.34
+eventlet==0.33.3
+dnspython==2.2.1
+
+# Not installable via pip (installed by setup.sh with apt, uses the system Python):
+#   mininet, openvswitch-switch
+# Everything else the project imports is in the standard library.

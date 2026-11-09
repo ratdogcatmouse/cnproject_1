@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "$0")"
 sudo apt update
-sudo apt install -y mininet openvswitch-switch python3-pip curl unzip
+sudo apt install -y mininet openvswitch-switch iproute2 ethtool python3-pip curl unzip
 sudo service openvswitch-switch start || sudo systemctl start openvswitch-switch || true
 
 # uv: small tool that fetches Python 3.10 without touching the system Python
