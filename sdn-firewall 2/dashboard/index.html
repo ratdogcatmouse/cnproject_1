@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDN Dynamic Firewall – Live Dashboard</title>
+<style>
+:root {
+  --bg: #0d1117; --panel: #161b22; --panel2: #1c2330; --line: #30363d;
+  --text: #e6edf3; --muted: #8b949e;
+  --allow: #3fb950; --deny: #f0883e; --block: #f85149; --unblock: #58a6ff;
+  --viol: #bc8cff; --reject: #d29922; --info: #8b949e;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+body { padding: 14px 18px 28px; max-width: 1500px; margin: 0 auto; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 13px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+h3 { font-size: 12px; margin: 16px 0 6px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+
+header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.brand { display: flex; flex-direction: column; gap: 2px; }
+.hdr-right { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.st { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--info); display: inline-block; }
+.dot.ok { background: var(--allow); box-shadow: 0 0 6px var(--allow); }
+.dot.bad { background: var(--block); box-shadow: 0 0 6px var(--block); }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; border: 1px solid var(--line); color: var(--muted); }
+.tag.demo { color: var(--reject); border-color: var(--reject); }
+.pill { font: inherit; font-weight: 700; letter-spacing: .04em; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+.pill.mode-dynamic { border-color: var(--allow); color: var(--allow); }
+.pill.mode-static { border-color: var(--reject); color: var(--reject); }
+.pill:disabled { opacity: .5; cursor: not-allowed; }
+.btn { font: inherit; padding: 5px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); cursor: pointer; }
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn.small { padding: 2px 9px; font-size: 12px; }
+.btn.danger { border-color: var(--block); color: var(--block); }
+button:focus-visible { outline: 2px solid var(--unblock); outline-offset: 2px; }
+
+.banner { background: rgba(248,81,73,.12); border: 1px solid var(--block); color: var(--text); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; }
+.banner[hidden] { display: none; }
+.pill.small { font-size: 12px; padding: 4px 12px; font-weight: 600; }
+.pill.on { border-color: var(--unblock); color: var(--unblock); }
+
+.popup { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); width: min(700px, calc(100vw - 24px)); z-index: 50;
+  background: var(--panel2); border: 1px solid var(--line); border-left: 7px solid var(--info); border-radius: 12px;
+  padding: 14px 44px 18px 16px; box-shadow: 0 12px 40px rgba(0,0,0,.65); animation: pop .25s ease-out; }
+.popup[hidden] { display: none; }
+@keyframes pop { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.popup .p-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 4px; }
+.popup .p-step { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.popup .p-badge { font-size: 11px; font-weight: 700; letter-spacing: .05em; padding: 2px 9px; border-radius: 999px; border: 1px solid currentColor; }
+.popup .p-title { font-size: 19px; font-weight: 700; margin: 2px 0 6px; }
+.popup .p-text { font-size: 14px; line-height: 1.5; color: var(--text); }
+.popup ul { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.popup li { font-family: var(--mono); font-size: 12.5px; padding: 5px 9px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); }
+.popup li .ri { display: inline-block; width: 1.4em; font-weight: 700; }
+.popup li.r-allow { border-left: 3px solid var(--allow); } .popup li.r-allow .ri { color: var(--allow); }
+.popup li.r-deny { border-left: 3px solid var(--deny); } .popup li.r-deny .ri { color: var(--deny); }
+.popup li.r-note { border-left: 3px solid var(--muted); } .popup li.r-note .ri { color: var(--muted); }
+.popup .p-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--bg); border-radius: 0 0 11px 5px; overflow: hidden; }
+.popup .p-bar i { display: block; height: 100%; width: 100%; background: var(--muted); }
+.popup .p-close { position: absolute; top: 8px; right: 10px; font-size: 22px; line-height: 1; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.popup .p-close:hover { color: var(--text); }
+.popup.v-allow { border-left-color: var(--allow); } .popup.v-allow .p-badge, .popup.v-allow .p-bar i { color: var(--allow); background-color: transparent; }
+.popup.v-deny { border-left-color: var(--deny); } .popup.v-deny .p-badge { color: var(--deny); }
+.popup.v-block { border-left-color: var(--block); } .popup.v-block .p-badge { color: var(--block); }
+.popup.v-unblock { border-left-color: var(--unblock); } .popup.v-unblock .p-badge { color: var(--unblock); }
+.popup.v-viol { border-left-color: var(--viol); } .popup.v-viol .p-badge { color: var(--viol); }
+.popup.v-info .p-badge { color: var(--muted); }
+.popup.v-allow .p-bar i { background: var(--allow); } .popup.v-deny .p-bar i { background: var(--deny); }
+.popup.v-block .p-bar i { background: var(--block); } .popup.v-unblock .p-bar i { background: var(--unblock); }
+.popup.v-viol .p-bar i { background: var(--viol); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--info); border-radius: 8px; padding: 10px 12px; }
+.stat .v { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat .l { color: var(--text); font-weight: 600; margin-top: 2px; }
+.stat .n { color: var(--muted); font-size: 12px; }
+.stat.allow { border-left-color: var(--allow); } .stat.allow .v { color: var(--allow); }
+.stat.deny { border-left-color: var(--deny); } .stat.deny .v { color: var(--deny); }
+.stat.block { border-left-color: var(--block); } .stat.block .v { color: var(--block); }
+.stat.unblock { border-left-color: var(--unblock); } .stat.unblock .v { color: var(--unblock); }
+.stat.viol { border-left-color: var(--viol); } .stat.viol .v { color: var(--viol); }
+.stat.reject { border-left-color: var(--reject); } .stat.reject .v { color: var(--reject); }
+@keyframes bump { 0% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.v.bump { animation: bump .35s ease-out; display: inline-block; }
+
+.grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; align-items: start; }
+.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+svg { width: 100%; height: auto; display: block; }
+svg text { font-family: var(--sans); fill: var(--text); }
+svg .cross { fill: var(--block); font-size: 18px; font-weight: 700; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+.empty { color: var(--muted); padding: 10px 2px; }
+.okmark { color: var(--allow); font-weight: 700; }
+.blk { border: 1px solid var(--block); background: rgba(248,81,73,.08); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.blk-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.blk-top .btn { margin-left: auto; }
+.blk .tag { color: var(--block); border-color: var(--block); }
+.bar { height: 8px; background: var(--panel2); border-radius: 4px; margin: 8px 0 4px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 100%; background: var(--block); transition: width .25s linear; }
+.cd { color: var(--muted); font-size: 12px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+.toolbar .sp { flex: 1; }
+.chip { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.chip.on { background: var(--panel2); color: var(--text); border-color: var(--muted); }
+.feed { max-height: 440px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.row { display: grid; grid-template-columns: 86px 128px 1fr; gap: 8px; align-items: baseline; padding: 4px 8px; border-bottom: 1px solid var(--line); border-left: 3px solid var(--info); }
+.row .t { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+.row .msg { overflow-wrap: anywhere; }
+.badge { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; text-align: center; }
+.allow { color: var(--allow); } .deny { color: var(--deny); } .block { color: var(--block); }
+.unblock { color: var(--unblock); } .viol { color: var(--viol); } .reject { color: var(--reject); } .info { color: var(--info); }
+.row.r-allow { border-left-color: var(--allow); } .row.r-deny { border-left-color: var(--deny); }
+.row.r-block { border-left-color: var(--block); background: rgba(248,81,73,.07); }
+.row.r-unblock { border-left-color: var(--unblock); } .row.r-viol { border-left-color: var(--viol); }
+.row.r-reject { border-left-color: var(--reject); }
+.row .badge.allow, .row .badge.deny, .row .badge.block, .row .badge.unblock, .row .badge.viol, .row .badge.reject, .row .badge.info { color: inherit; }
+.row.r-allow .badge { color: var(--allow); } .row.r-deny .badge { color: var(--deny); }
+.row.r-block .badge { color: var(--block); } .row.r-unblock .badge { color: var(--unblock); }
+.row.r-viol .badge { color: var(--viol); } .row.r-reject .badge { color: var(--reject); }
+.row.r-info .badge { color: var(--info); }
+
+footer { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; color: var(--muted); font-size: 12px; }
+footer .sp { flex: 1; }
+
+@media (max-width: 960px) { .grid { grid-template-columns: 1fr; } .row { grid-template-columns: 78px 1fr; } .row .badge { grid-column: 2; justify-self: start; } .row .msg { grid-column: 1 / -1; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>SDN Dynamic Firewall</h1>
+    <span class="muted">Live security dashboard</span>
+  </div>
+  <div class="hdr-right">
+    <span id="demo" class="tag demo" hidden>DEMO DATA</span>
+    <button id="democtl" class="pill small" type="button" hidden>Pause demo</button>
+    <button id="popups" class="pill small on" type="button" title="Explanatory pop-ups on or off">Pop-ups: ON</button>
+    <span class="st"><i id="dot-ctl" class="dot"></i>Controller</span>
+    <span class="st"><i id="dot-log" class="dot"></i>Logger</span>
+    <button id="mode" class="pill" type="button" title="Click to switch between dynamic and static mode" disabled>Mode: …</button>
+  </div>
+</header>
+
+<div id="banner" class="banner" hidden></div>
+<div id="down" class="banner" hidden></div>
+
+<section class="stats" id="stats" aria-label="Counters"></section>
+
+<main class="grid">
+  <div class="col">
+    <section class="card">
+      <h2>Network topology</h2>
+      <svg id="topo" viewBox="0 0 560 360" role="img" aria-label="Network topology: hosts h1 to h5, switch s1 and the controller. Blocked hosts are shown in red."></svg>
+    </section>
+    <section class="card">
+      <h2>Traffic – last 60 seconds</h2>
+      <div class="legend">
+        <span><i style="background:var(--allow)"></i>allowed flows</span>
+        <span><i style="background:var(--deny)"></i>denied flows</span>
+        <span><i style="background:var(--block);opacity:.4"></i>block installed</span>
+      </div>
+      <svg id="timeline" viewBox="0 0 600 126" role="img" aria-label="Allowed and denied flows per second over the last minute"></svg>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card">
+      <h2>Blocked hosts</h2>
+      <div id="blocked"></div>
+      <h3>Block history</h3>
+      <div id="history"></div>
+    </section>
+    <section class="card">
+      <h2>Event feed</h2>
+      <div class="toolbar" id="toolbar">
+        <button class="chip on" data-f="ALL" type="button">All</button>
+        <button class="chip" data-f="ALLOW" type="button">Allow</button>
+        <button class="chip" data-f="DENY" type="button">Deny</button>
+        <button class="chip" data-f="BLOCK" type="button">Block / Unblock</button>
+        <button class="chip" data-f="ALERTS" type="button">Alerts</button>
+        <span class="sp"></span>
+        <button class="btn small" id="pause" type="button">Pause</button>
+      </div>
+      <div class="feed" id="feed" aria-live="off"></div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <span id="updated">waiting for data…</span>
+  <span class="sp"></span>
+  <button class="btn small" id="clear" type="button" title="Empty this page’s counters and feed (does not touch the firewall or the log file)">Clear view</button>
+  <button class="btn small danger" id="reset" type="button" title="Controller RESET: removes all flows and block state">Reset firewall</button>
+</footer>
+
+<div id="popup" class="popup v-info" role="status" aria-live="polite" hidden>
+  <button class="p-close" id="p-close" type="button" aria-label="Dismiss">×</button>
+  <div class="p-head"><span class="p-step" id="p-step"></span><span class="p-badge" id="p-badge"></span></div>
+  <div class="p-title" id="p-title"></div>
+  <div class="p-text" id="p-text"></div>
+  <ul id="p-rules"></ul>
+  <div class="p-bar"><i id="p-bar"></i></div>
+</div>
+
+<script>
+"use strict";
+const $ = (s) => document.querySelector(s);
+const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const NODES = {
+  "10.0.0.1":   { name: "h1",  role: "admin client",        x: 80,  y: 105 },
+  "10.0.0.2":   { name: "h2",  role: "app server",          x: 280, y: 52  },
+  "10.0.0.3":   { name: "h3",  role: "client",              x: 80,  y: 255 },
+  "10.0.0.4":   { name: "h4",  role: "attacker",            x: 480, y: 105 },
+  "10.0.0.5":   { name: "h5",  role: "untrusted",           x: 480, y: 255 },
+  "10.0.0.100": { name: "ctl", role: "controller",          x: 280, y: 308 },
+};
+const SWITCH = { x: 280, y: 180 };
+const nm = (ip) => (NODES[ip] ? NODES[ip].name : (ip == null ? "?" : ip));
+
+const FLASH = { ALLOW: "var(--allow)", DENY: "var(--deny)", BLOCK: "var(--block)",
+                UNBLOCK: "var(--unblock)", APP_VIOLATION: "var(--viol)", BAD_COMMAND: "var(--viol)" };
+const EV_CLASS = { ALLOW: "allow", DENY: "deny", BLOCK: "block", UNBLOCK: "unblock",
+                   APP_VIOLATION: "viol", BAD_COMMAND: "viol",
+                   REJECTED_COMMAND: "reject", REJECTED_REPORT: "reject" };
+const GROUPS = { ALL: null, ALLOW: ["ALLOW"], DENY: ["DENY"], BLOCK: ["BLOCK", "UNBLOCK"],
+                 ALERTS: ["APP_VIOLATION", "BAD_COMMAND", "REJECTED_COMMAND", "REJECTED_REPORT"] };
+const SKIP = new Set(["ts", "epoch", "source", "event", "seq", "logger_ts", "from"]);
+
+const CARDS = [
+  { id: "ALLOW",         label: "Allowed flows",     note: "new TCP flows permitted",       cls: "allow" },
+  { id: "DENY",          label: "Denied flows",      note: "policy / default deny",         cls: "deny" },
+  { id: "BLOCK",         label: "Hosts blocked",     note: "automatic blocks installed",    cls: "block" },
+  { id: "UNBLOCK",       label: "Auto recoveries",   note: "blocks expired or removed",     cls: "unblock" },
+  { id: "APP_VIOLATION", label: "App violations",    note: "reported by the app server",    cls: "viol" },
+  { id: "REJ",           label: "Rejected messages", note: "forged / unauthorised control", cls: "reject" },
+];
+
+let since = 0, gen = null, events = [], paused = false, filter = "ALL";
+let state = null, stateAt = 0, feedDirty = true, blockedKey = null;
+const seen = {};          // ip -> {ev, at}: last thing seen for that host (drives the flashes)
+const lastVal = {};
+
+// ------------------------------------------------------------------ helpers
+async function post(path, body) {
+  const r = await fetch(path, { method: "POST", cache: "no-store",
+    headers: { "Content-Type": "application/json", "X-Dashboard": "1" },
+    body: JSON.stringify(body || {}) });
+  return r.json();
+}
+function ageSec() { return state && state.paused ? 0 : (performance.now() - stateAt) / 1000; }
+function hhmmss(ts) { return ts && ts.length >= 19 ? ts.slice(11, 23) : ""; }
+function describe(e) {
+  switch (e.event) {
+    case "ALLOW": case "DENY":
+      return nm(e.src) + " → " + nm(e.dst) + ":" + e.dport + "  ·  rule: " + (e.rule || "-");
+    case "BLOCK":
+      return nm(e.src) + " blocked for " + e.seconds + " s  ·  " + e.reason +
+             (e.detail ? " (" + e.detail + ")" : "") + "  ·  offence #" + e.offence;
+    case "UNBLOCK":
+      return nm(e.src) + " unblocked (" + e.reason + ") after " + Number(e.blocked_for).toFixed(1) + " s";
+    case "APP_VIOLATION":
+      return nm(e.src) + " reported by the app server: " + (e.reason || "");
+    case "BAD_COMMAND":
+      return nm(e.src) + " sent a malformed command (#" + e.count + ")";
+    case "NARRATION":
+      return "▶ " + (e.step ? e.step + " – " : "") + (e.title || "");
+    case "MODE_CHANGE":
+      return "firewall mode is now " + String(e.mode).toUpperCase();
+    case "REJECTED_COMMAND":
+      return "admin command " + e.cmd + " from " + e.peer + " rejected (localhost only)";
+    case "REJECTED_REPORT":
+      return "forged violation report from " + e.peer + " (claimed " + e.claimed_src + ") rejected";
+    case "CLIENT_CONNECT": case "CLIENT_DISCONNECT":
+      return nm(e.src) + (e.event === "CLIENT_CONNECT" ? " connected to" : " disconnected from") + " the app server";
+    default:
+      return Object.entries(e).filter(([k]) => !SKIP.has(k))
+        .map(([k, v]) => k + "=" + (typeof v === "object" ? JSON.stringify(v) : v)).join("   ");
+  }
+}
+
+// ------------------------------------------------------------------ pop-ups
+let popupsOn = true, popup = null, lastTick = performance.now();
+const VERDICT = { allow: ["ALLOWED", "allow"], deny: ["DENIED", "deny"], block: ["BLOCKED", "block"],
+                  recover: ["RECOVERED", "unblock"], alert: ["SUSPICIOUS", "viol"], info: ["INFO", "info"] };
+const RULE_ICON = { allow: "✓", deny: "✗", note: "→" };
+const VCOLOR = { allow: "var(--allow)", deny: "var(--deny)", block: "var(--block)",
+                 unblock: "var(--unblock)", viol: "var(--viol)", info: "var(--muted)" };
+
+function showPopup(n, ageSec) {
+  if (!popupsOn) return;
+  const v = VERDICT[n.verdict] || VERDICT.info;
+  const hold = (Number(n.hold) || 7) * 1000;
+  $("#popup").className = "popup v-" + v[1];
+  $("#p-step").textContent = n.step || "";
+  $("#p-badge").textContent = v[0];
+  $("#p-title").textContent = n.title || "";
+  $("#p-text").textContent = n.text || "";
+  $("#p-rules").innerHTML = (n.rules || []).map((r) =>
+    '<li class="r-' + esc(r.kind) + '"><span class="ri" aria-hidden="true">' + (RULE_ICON[r.kind] || "→") + '</span>' + esc(r.text) + '</li>').join("");
+  $("#popup").hidden = false;
+  popup = { hold, until: performance.now() + Math.max(1500, hold - (ageSec || 0) * 1000), actors: n.actors || [], color: VCOLOR[v[1]] };
+}
+function hidePopup() { popup = null; $("#popup").hidden = true; }
+function tickPopup(dt) {
+  if (!popup) return;
+  if (state && state.paused) popup.until += dt;            // keep it on screen while the demo is paused
+  const left = popup.until - performance.now();
+  if (left <= 0) return hidePopup();
+  $("#p-bar").style.width = Math.min(100, left / popup.hold * 100).toFixed(1) + "%";
+}
+// live mode: turn important events into a plain-language pop-up
+function autoExplain(e) {
+  const who = nm(e.src);
+  switch (e.event) {
+    case "BLOCK":
+      return { step: "Live event", title: who + " was blocked", verdict: "block", actors: [e.src], hold: 7,
+        text: "Reason: " + e.reason + (e.detail ? " (" + e.detail + ")" : "") + ". The controller installed a drop rule on the switch for " +
+              e.seconds + " s (offence #" + e.offence + "). It is removed automatically when the timer ends.",
+        rules: [{ kind: "deny", text: "DROP  all traffic from " + who + "   (" + e.seconds + " s)" }] };
+    case "UNBLOCK":
+      return { step: "Live event", title: who + " has recovered", verdict: "recover", actors: [e.src], hold: 6,
+        text: who + " was blocked for " + Number(e.blocked_for).toFixed(1) + " s and is allowed again (" + e.reason + ").",
+        rules: [{ kind: "allow", text: "ALLOW  " + who + " follows the normal policy again" }] };
+    case "REJECTED_REPORT":
+      return { step: "Live event", title: "Forged violation report rejected", verdict: "deny", actors: [], hold: 7,
+        text: "A host (" + e.peer + ") sent a violation report claiming to be about " + e.claimed_src + ". Only the app server may report violations.",
+        rules: [{ kind: "deny", text: "REJECTED  report from " + e.peer }] };
+    case "REJECTED_COMMAND":
+      return { step: "Live event", title: "Admin command rejected", verdict: "deny", actors: [], hold: 7,
+        text: "Host " + e.peer + " tried the admin command " + e.cmd + ". Admin commands are accepted from localhost only.",
+        rules: [{ kind: "deny", text: "REJECTED  " + e.cmd + " from " + e.peer }] };
+    case "MODE_CHANGE":
+      return { step: "Live event", title: "Firewall mode: " + String(e.mode).toUpperCase(), verdict: "info", actors: [], hold: 6,
+        text: e.mode === "dynamic" ? "Detection is ON: scans, floods and application violations are blocked automatically."
+                                   : "Detection is OFF: only the fixed allow/deny rules apply; nothing is blocked automatically.",
+        rules: [] };
+  }
+  return null;
+}
+
+// ------------------------------------------------------------------ rendering
+function buildCards() {
+  $("#stats").innerHTML = CARDS.map((c) =>
+    '<div class="stat ' + c.cls + '"><div class="v" id="v-' + c.id + '">0</div>' +
+    '<div class="l">' + esc(c.label) + '</div><div class="n">' + esc(c.note) + '</div></div>').join("");
+}
+function renderStats() {
+  const c = state.counts || {};
+  for (const card of CARDS) {
+    const v = card.id === "REJ" ? (c.REJECTED_COMMAND || 0) + (c.REJECTED_REPORT || 0) : (c[card.id] || 0);
+    const el = $("#v-" + card.id);
+    if (lastVal[card.id] !== v) {
+      el.textContent = v.toLocaleString();
+      if (lastVal[card.id] !== undefined && v > lastVal[card.id]) {
+        el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+      }
+      lastVal[card.id] = v;
+    }
+  }
+}
+function renderHeader() {
+  const c = state.controller;
+  $("#dot-ctl").className = "dot " + (c.up ? "ok" : "bad");
+  $("#dot-log").className = "dot " + (state.logger_up ? "ok" : "bad");
+  const mode = c.mode || "unknown";
+  const btn = $("#mode");
+  btn.textContent = "Mode: " + mode.toUpperCase();
+  btn.className = "pill mode-" + mode;
+  btn.disabled = !c.up;
+  $("#demo").hidden = !state.demo;
+  $("#democtl").hidden = !state.demo;
+  $("#democtl").textContent = state.paused ? "▶ Resume demo" : "⏸ Pause demo";
+  const b = $("#banner");
+  b.hidden = c.up;
+  if (!c.up) b.textContent = "Controller control channel not reachable (" + (c.error || "no reply") +
+    "). Start it with ./run.sh controller – the event feed keeps following the log file.";
+  $("#updated").textContent = "updated " + new Date().toLocaleTimeString() +
+    (state.demo ? "  ·  simulated traffic" : "");
+}
+function renderTopology() {
+  if (!state) return;
+  const t = performance.now();
+  const blockedBy = {};
+  for (const b of state.blocked) blockedBy[b.src] = b;
+  const hosts = state.hosts || {};
+  let svg = "";
+  for (const [ip, n] of Object.entries(NODES)) {
+    const b = blockedBy[ip], f = seen[ip];
+    const live = f && (t - f.at) < 1500;
+    let stroke = "var(--line)", extra = "", w = 2;
+    if (b) { stroke = "var(--block)"; extra = "stroke-dasharray:6 5;"; }
+    else if (live) { stroke = FLASH[f.ev] || "var(--line)"; w = 3; }
+    svg += '<line x1="' + n.x + '" y1="' + n.y + '" x2="' + SWITCH.x + '" y2="' + SWITCH.y +
+           '" style="stroke:' + stroke + ";stroke-width:" + w + ";" + extra + '"/>';
+    if (b) svg += '<text class="cross" x="' + ((n.x + SWITCH.x) / 2) + '" y="' + ((n.y + SWITCH.y) / 2 + 6) +
+                  '" text-anchor="middle">✕</text>';
+  }
+  for (const [ip, n] of Object.entries(NODES)) {
+    const b = blockedBy[ip], f = seen[ip];
+    const live = f && (t - f.at) < 1500;
+    if (popup && popup.actors.includes(ip))        // spotlight: the host the pop-up is talking about
+      svg += '<rect x="' + (n.x - 81) + '" y="' + (n.y - 36) + '" width="162" height="74" rx="15" style="fill:none;stroke:' +
+             popup.color + ';stroke-width:6;opacity:.4"/>';
+    let stroke = "var(--line)", fill = "var(--panel2)", w = 2;
+    if (b) { stroke = "var(--block)"; fill = "#3a1d1f"; w = 3; }
+    else if (live) { stroke = FLASH[f.ev] || "var(--line)"; w = 3; }
+    let line3 = "";
+    if (b) {
+      const left = Math.max(0, b.remaining - ageSec());
+      line3 = '<text x="' + n.x + '" y="' + (n.y + 22) + '" text-anchor="middle" style="fill:var(--block);font-size:11px;font-weight:700">BLOCKED ' + left.toFixed(0) + ' s</text>';
+    } else if (ip === "10.0.0.100") {
+      line3 = '<text x="' + n.x + '" y="' + (n.y + 22) + '" text-anchor="middle" style="fill:var(--muted);font-size:11px">mode: ' + esc(state.controller.mode || "?") + '</text>';
+    } else if (hosts[ip]) {
+      line3 = '<text x="' + n.x + '" y="' + (n.y + 22) + '" text-anchor="middle" style="fill:var(--muted);font-size:11px">✓ ' +
+              (hosts[ip].ALLOW || 0) + '   ✗ ' + (hosts[ip].DENY || 0) + '</text>';
+    }
+    svg += '<rect x="' + (n.x - 75) + '" y="' + (n.y - 30) + '" width="150" height="62" rx="10" style="fill:' + fill +
+           ";stroke:" + stroke + ";stroke-width:" + w + '"/>' +
+           '<text x="' + n.x + '" y="' + (n.y - 10) + '" text-anchor="middle" style="font-size:14px;font-weight:700">' + esc(n.name) + '</text>' +
+           '<text x="' + n.x + '" y="' + (n.y + 5) + '" text-anchor="middle" style="fill:var(--muted);font-size:10.5px">' + esc(ip) + ' · ' + esc(n.role) + '</text>' + line3;
+  }
+  const nb = state.blocked.length;
+  svg += '<rect x="' + (SWITCH.x - 88) + '" y="' + (SWITCH.y - 24) + '" width="176" height="48" rx="10" style="fill:var(--panel2);stroke:var(--unblock);stroke-width:2"/>' +
+         '<text x="' + SWITCH.x + '" y="' + (SWITCH.y - 4) + '" text-anchor="middle" style="font-size:14px;font-weight:700">s1</text>' +
+         '<text x="' + SWITCH.x + '" y="' + (SWITCH.y + 13) + '" text-anchor="middle" style="fill:var(--muted);font-size:11px">Open vSwitch' +
+         (nb ? " · " + nb + " blocked" : "") + '</text>';
+  $("#topo").innerHTML = svg;
+}
+function renderTimeline() {
+  const tl = state.timeline || [];
+  const W = 600, base = 104, top = 6, bw = W / Math.max(tl.length, 1);
+  const max = Math.max(5, ...tl.map((a) => a[0] + a[1]));
+  let s = '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base + '" style="stroke:var(--line)"/>';
+  tl.forEach((a, i) => {
+    const x = i * bw;
+    if (a[2] > 0) s += '<rect x="' + x + '" y="' + top + '" width="' + bw + '" height="' + (base - top) + '" style="fill:var(--block);opacity:.4"/>' +
+                       '<rect x="' + x + '" y="' + top + '" width="' + bw + '" height="3" style="fill:var(--block)"/>';
+    let y = base;
+    [[a[0], "allow"], [a[1], "deny"]].forEach(([v, c]) => {
+      if (!v) return;
+      const h = Math.max(1.5, v / max * (base - top));
+      y -= h;
+      s += '<rect x="' + (x + 0.7) + '" y="' + y.toFixed(1) + '" width="' + (bw - 1.4).toFixed(1) + '" height="' + h.toFixed(1) + '" style="fill:var(--' + c + ')"/>';
+    });
+  });
+  s += '<text x="2" y="120" style="fill:var(--muted);font-size:10px">60 s ago</text>' +
+       '<text x="' + W + '" y="120" text-anchor="end" style="fill:var(--muted);font-size:10px">now</text>' +
+       '<text x="2" y="' + (top + 9) + '" style="fill:var(--muted);font-size:10px">' + max + ' / s</text>';
+  $("#timeline").innerHTML = s;
+}
+function renderBlocked() {
+  if (!state) return;
+  const list = state.blocked;
+  const key = list.map((b) => b.src + ":" + b.offence).join("|");
+  const box = $("#blocked");
+  if (key !== blockedKey) {                    // rebuild only when the set changes (keeps buttons clickable)
+    blockedKey = key;
+    box.innerHTML = list.length ? list.map((b) =>
+      '<div class="blk"><div class="blk-top"><strong>' + esc(nm(b.src)) + '</strong>' +
+      '<span class="mono muted">' + esc(b.src) + '</span>' +
+      '<span class="tag">' + esc(b.reason || "BLOCK") + '</span>' +
+      '<span class="muted">offence #' + esc(b.offence || "?") + '</span>' +
+      '<button class="btn small" type="button" data-unblock="' + esc(b.src) + '">Unblock</button></div>' +
+      '<div class="muted small">' + esc(b.detail || "") + '</div>' +
+      '<div class="bar"><i data-bar="' + esc(b.src) + '"></i></div>' +
+      '<div class="cd mono" data-cd="' + esc(b.src) + '"></div></div>').join("")
+      : '<div class="empty"><span class="okmark">✓</span> No hosts blocked – all traffic is following the policy.</div>';
+  }
+  const age = ageSec();
+  for (const b of list) {
+    const left = Math.max(0, b.remaining - age);
+    const total = b.total || Math.max(b.remaining, 1);
+    const bar = box.querySelector('[data-bar="' + b.src + '"]');
+    const cd = box.querySelector('[data-cd="' + b.src + '"]');
+    if (bar) bar.style.width = Math.min(100, left / total * 100).toFixed(1) + "%";
+    if (cd) cd.textContent = "automatic recovery in " + left.toFixed(1) + " s" + (b.total ? " (of " + b.total + " s)" : "");
+  }
+}
+function renderHistory() {
+  const h = (state.history || []).slice().reverse().slice(0, 8);
+  $("#history").innerHTML = h.length
+    ? '<table><thead><tr><th>Time</th><th>Host</th><th>Reason</th><th>Offence</th><th>Block time</th></tr></thead><tbody>' +
+      h.map((r) => '<tr><td class="mono">' + esc(new Date(r.blocked_at * 1000).toLocaleTimeString()) + '</td><td>' + esc(nm(r.src)) +
+        '</td><td>' + esc(r.reason) + '</td><td>#' + esc(r.offence) + '</td><td>' + esc(r.seconds) + ' s</td></tr>').join("") +
+      '</tbody></table>'
+    : '<div class="empty">No blocks yet.</div>';
+}
+function renderFeed() {
+  if (!feedDirty || paused) return;
+  feedDirty = false;
+  const g = GROUPS[filter];
+  const rows = [];
+  for (let i = events.length - 1; i >= 0 && rows.length < 120; i--) {
+    const e = events[i];
+    if (g && !g.includes(e.event)) continue;
+    const cls = EV_CLASS[e.event] || "info";
+    rows.push('<div class="row r-' + cls + '"><span class="t">' + esc(hhmmss(e.ts)) + '</span><span class="badge">' +
+              esc(e.event) + '</span><span class="msg">' + esc(describe(e)) + '</span></div>');
+  }
+  $("#feed").innerHTML = rows.join("") ||
+    '<div class="empty" style="padding:12px">No events yet. Run <span class="mono">./run.sh test</span> or <span class="mono">./run.sh topo</span> to generate traffic.</div>';
+}
+function renderAll() {
+  renderHeader(); renderStats(); renderTimeline(); renderHistory();
+  renderBlocked(); renderTopology(); renderFeed();
+}
+
+// ------------------------------------------------------------------ polling
+async function poll() {
+  try {
+    const r = await fetch("/api/state?since=" + since, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const s = await r.json();
+    if (gen !== null && (s.generation !== gen || s.seq < since)) {      // view cleared / server restarted
+      events = []; since = 0; gen = s.generation; feedDirty = true;
+      return setTimeout(poll, 0);
+    }
+    gen = s.generation;
+    state = s; stateAt = performance.now();
+    let narr = null, auto = null;
+    for (const e of s.events) {
+      events.push(e);
+      const age = s.now - (Number(e.epoch) || 0);
+      const fresh = age < 4;
+      if (e.event === "NARRATION") { if (age < (Number(e.hold) || 7)) narr = { e, age }; }
+      else if (fresh && !s.demo) auto = autoExplain(e) || auto;
+      if (fresh && e.src && FLASH[e.event]) seen[e.src] = { ev: e.event, at: performance.now() };
+      if (fresh && e.event === "ALLOW" && e.dst) seen[e.dst] = { ev: "ALLOW", at: performance.now() };
+    }
+    if (s.events.length) { feedDirty = true; if (events.length > 400) events = events.slice(-400); }
+    since = s.seq;
+    if (narr) showPopup(narr.e, narr.age); else if (auto) showPopup(auto, 0);
+    $("#down").hidden = true;
+    renderAll();
+  } catch (err) {
+    const d = $("#down");
+    d.hidden = false;
+    d.textContent = "Dashboard server unreachable (" + err.message + "). Is dashboard/server.py still running?";
+  }
+  setTimeout(poll, 1000);
+}
+
+// ------------------------------------------------------------------ controls
+$("#toolbar").addEventListener("click", (ev) => {
+  const chip = ev.target.closest("[data-f]");
+  if (!chip) return;
+  filter = chip.dataset.f;
+  document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("on", c === chip));
+  feedDirty = true; renderFeed();
+});
+$("#pause").addEventListener("click", () => {
+  paused = !paused;
+  $("#pause").textContent = paused ? "Resume" : "Pause";
+  if (!paused) { feedDirty = true; renderFeed(); }
+});
+$("#blocked").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-unblock]");
+  if (b) post("/api/cmd", { cmd: "UNBLOCK", src: b.dataset.unblock });
+});
+$("#mode").addEventListener("click", () => {
+  if (!state || !state.controller.up) return;
+  post("/api/cmd", { cmd: "MODE", mode: state.controller.mode === "dynamic" ? "static" : "dynamic" });
+});
+$("#clear").addEventListener("click", () => post("/api/clear"));
+$("#p-close").addEventListener("click", hidePopup);
+$("#popups").addEventListener("click", () => {
+  popupsOn = !popupsOn;
+  $("#popups").textContent = "Pop-ups: " + (popupsOn ? "ON" : "OFF");
+  $("#popups").classList.toggle("on", popupsOn);
+  if (!popupsOn) hidePopup();
+});
+$("#democtl").addEventListener("click", () =>
+  post("/api/cmd", { cmd: "DEMO", action: state && state.paused ? "resume" : "pause" }));
+$("#reset").addEventListener("click", () => {
+  if (confirm("Reset the firewall? This removes all flows and block state in the controller.")) post("/api/cmd", { cmd: "RESET" });
+});
+
+buildCards();
+poll();
+setInterval(() => {
+  const now = performance.now(), dt = now - lastTick; lastTick = now;
+  tickPopup(dt);
+  if (state) { renderTopology(); renderBlocked(); }
+}, 250);
+</script>
+</body>
+</html>
