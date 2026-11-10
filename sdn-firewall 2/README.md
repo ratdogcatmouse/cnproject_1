@@ -1,9 +1,5 @@
 # Dynamic Firewall with Security Event Logger
 
-**Course:** Computer Networks · SDN + TCP Socket Programming Mini Project
-**Topic:** Dynamic Firewall with Security Event Logger (TCP)
-**Status:** Deliverable 2 – complete system (builds on the D1 prototype)
-
 An SDN firewall (Ryu, OpenFlow 1.3) that classifies socket traffic by source,
 destination and port, installs allow / deny / block rules, detects attacks
 automatically, recovers blocked hosts on a timer, and reports every security
