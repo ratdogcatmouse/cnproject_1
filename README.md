@@ -285,7 +285,7 @@ block **68–86 ms**; recovery after **10.1 s** (configured 10 s timeout).
 - `controller/firewall_controller.py`
 - `controller/policy.json`
 
-### Hemadarshini: Security logger, testing and evaluation (~555 lines)
+### Hemadarshni: Security logger, testing and evaluation (~555 lines)
 
 - `logger/`
 - `tools/fwctl.py`
