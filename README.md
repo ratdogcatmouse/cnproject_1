@@ -258,20 +258,20 @@ block **68–86 ms**; recovery after **10.1 s** (configured 10 s timeout).
 | **Ishaan Bhatia** | Mininet topology and SDN controller | Dynamic SDN functionality
 | **Hemadarshini** | Security logger, testing and evaluation | Performance evaluation, documentation
 
-### Hrishikesh Das: TCP application (~415 lines)
+### Hrishikesh Das: TCP application 
 
 - `app/common.py`
 - `app/tcp_server.py`
 - `app/tcp_client.py`
 - `app/attacker.py`
 
-### Ishaan Bhatia: Mininet topology and SDN controller (~430 lines)
+### Ishaan Bhatia: Mininet topology and SDN controller 
 
 - `topology/topo.py`
 - `controller/firewall_controller.py`
 - `controller/policy.json`
 
-### Hemadarshni: Security logger, testing and evaluation (~555 lines)
+### Hemadarshni: Security logger, testing and evaluation 
 
 - `logger/`
 - `tools/fwctl.py`
