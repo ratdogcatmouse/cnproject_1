@@ -227,22 +227,8 @@ block **68–86 ms**; recovery after **10.1 s** (configured 10 s timeout).
   arrives only after the first probes time out. The block lands before the scan reaches :5000, so
   the service is never discovered. The static firewall lets it be found.
 
-## 7. Rubric mapping
 
-| Component | Marks | Evidence |
-|---|---:|---|
-| D1: Problem understanding and architecture | 2 | Sections 1–2 |
-| D1: TCP socket implementation | 4 | Threaded server, protocol, error handling, client; T02–T03 |
-| D1: Mininet + SDN implementation | 4 | Topology, OpenFlow 1.3 policy flows; T01, T04–T06 |
-| D1: Socket–SDN integration | 3 | App server → controller reports → block; T07 |
-| D1: Initial testing and demo | 2 | `run_tests.py`, manual demo |
-| D2: Complete application functionality | 4 | All project bullets (section 1); T01–T08, T14 |
-| D2: Dynamic SDN functionality | 6 | Packet-in monitoring, filtering, automatic blocking, timed recovery, escalation, runtime mode switch; T07–T11 |
-| D2: Challenging scenario / robustness | 4 | Port scan, connection flood, server overload limit, forged control messages; T09–T13 |
-| D2: Performance evaluation and comparison | 5 | `benchmark.py`: 4 scenarios × static/dynamic, latency, success, response time |
-| D2: Documentation, demo, viva | 6 | This README, scripts, reproducible tests |
-
-## 8. Troubleshooting
+## 7. Troubleshooting
 
 - **Mininet left over from a crash:** `sudo mn -c`
 - **"Start ./run.sh logger / controller first":** both must be running before `test`, `bench` or `topo`.
@@ -252,7 +238,7 @@ block **68–86 ms**; recovery after **10.1 s** (configured 10 s timeout).
   offload, which userspace OVS needs for TCP.
 - **Ryu install fails:** Ryu needs Python ≤ 3.10; `setup.sh` creates a separate 3.10 environment with `uv`.
 
-## 9. Limitations
+## 8. Limitations
 
 - Detection only sees new flows that reach the controller. A flood on a single long-lived connection
   stays in the switch and is not counted; flow-statistics polling would be the next step.
@@ -264,7 +250,7 @@ block **68–86 ms**; recovery after **10.1 s** (configured 10 s timeout).
 - The firewall is stateless per packet (reply traffic is recognised by the reverse rule match), and
   the policy is for a single switch.
 
-## 10. Contributions
+## 9. Contributions
 
 | Member | Area | Main rubric items |
 |---|---|---|
