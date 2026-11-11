@@ -448,12 +448,12 @@ class DemoBackend:
                 found = True
                 break
             self.deny(H4, port)
-            if i == 5:
-                rec = self.block(H4, "PORT_SCAN", "6 denied ports in 2.5s")
+            if i == 4:
+                rec = self.block(H4, "PORT_SCAN", "5 denied ports in 2.0s")
             self.wait(0.5)
         if rec:
             self._blocked_and_recovered(step, H4, rec,
-                "The scan was caught after 6 probes, before it reached port 5000 where the real service "
+                "The scan was caught after 5 probes, before it reached port 5000 where the real service "
                 "lives. The attacker learned nothing and is cut off for a while.",
                 [("deny", "DROP  everything from h4   (%d s, automatic)" % rec["seconds"])])
         elif found:
