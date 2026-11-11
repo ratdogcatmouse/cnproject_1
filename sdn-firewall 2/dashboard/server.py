@@ -472,12 +472,12 @@ class DemoBackend:
             if self.is_blocked(H4):
                 break
             self.allow(H4)
-            if i == 40:
-                rec = self.block(H4, "CONN_FLOOD", "41 new connections in 1.9s")
+            if i == 39:
+                rec = self.block(H4, "CONN_FLOOD", "40 new connections in 1.8s")
             self.wait(0.045)
         if rec:
             self._blocked_and_recovered(step, H4, rec,
-                "41 connections in under 2 seconds trips the flood detector. Because h4 already offended once, "
+                "40 connections in under 2 seconds trips the flood detector. Because h4 already offended once, "
                 "the block is twice as long as before.",
                 [("deny", "DROP  everything from h4   (%d s, second offence)" % rec["seconds"])])
         else:
