@@ -263,3 +263,32 @@ block **68–86 ms**; recovery after **10.1 s** (configured 10 s timeout).
 - Source IPs are not authenticated (no anti-spoofing / IP-MAC binding).
 - The firewall is stateless per packet (reply traffic is recognised by the reverse rule match), and
   the policy is for a single switch.
+
+## 10. Contributions
+
+| Member | Area | Main rubric items |
+|---|---|---|
+| **Hrishikesh Das** | TCP application | Complete application functionality
+| **Ishaan Bhatia** | Mininet topology and SDN controller | Dynamic SDN functionality
+| **Hemadarshini** | Security logger, testing and evaluation | Performance evaluation, documentation
+
+### Hrishikesh Das: TCP application (~415 lines)
+
+- `app/common.py`
+- `app/tcp_server.py`
+- `app/tcp_client.py`
+- `app/attacker.py`
+
+### Ishaan Bhatia: Mininet topology and SDN controller (~430 lines)
+
+- `topology/topo.py`
+- `controller/firewall_controller.py`
+- `controller/policy.json`
+
+### Hemadarshini: Security logger, testing and evaluation (~555 lines)
+
+- `logger/`
+- `tools/fwctl.py`
+- `tests/lab.py`, `tests/run_tests.py`, `tests/benchmark.py`
+- `run.sh`, `setup.sh`
+- `README.md`
